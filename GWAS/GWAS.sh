@@ -1,3 +1,7 @@
+## example of GWAS analysis
+
+
+``` bash
 #!/bin/bash -l
 
 #SBATCH -A sens2022015
@@ -7,7 +11,6 @@
 #SBATCH -J lc_2_gwas
 #SBATCH -e lc_2_gwas.err
 #SBATCH -o lc_2_gwas.out
-
 
 module load bioinfo-tools plink plink2
 
@@ -44,12 +47,9 @@ plink --bfile ../HPA_101_qc_maf0.05 --clump  coeff/2_p1e-05/coeff.${i}.glm.linea
 awk 'BEGIN {OFS="\t"} NR==FNR{a[$3]=$0;next} NR>FNR{if($3 in a) print $0}' coeff/3_clumping/coeff.${i}.glm.linear.p1e-5.clumped coeff/2_p1e-05/coeff.${i}.glm.linear.p1e-5.txt > coeff/3_clumping/coeff.${i}.glm.linear.p1e-5.clumping.txt
 
 
-
-
-
 work_end_time=$(date +%s)
 work_end_time=$(date +%s)
 echo "#######-- coeff gwas End Time:`date +%Y/%m/%d--%H:%M` --#######"
 ((elapsed_time = $work_end_time - $work_start_time))
 echo "#######-- coeff gwas Elapsed Time:$elapsed_time sec --#######"
-
+```
