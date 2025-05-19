@@ -1,0 +1,142 @@
+# Comparison of Tier 1 proteins in obese and non-obese (UKB)  ####
+ukb.data <- read.table("UKB/UKB_sample38231_diseaseAndHealth_protein19_0417.txt", sep="\t", header=T)
+
+y <- ukb.data$obese
+X <- ukb.data[, c(18,20,21,22,23,24,25,28,29,30,34,36)]
+
+idx.keep <- which(y=="normal" | y=="obese") %>% intersect(which(ukb.data$pro19_na<2))
+y <- y[idx.keep]
+X <- X[idx.keep,]
+
+#Boxplot
+df.plot <- data.frame()
+df.plot.full <- data.frame()
+cluster.uniq <- unique(y)
+n.cluster <- 2
+for (n in 1:n.cluster){
+  for (m in 1:ncol(X)){
+    
+    values <- X[y==cluster.uniq[n], m] %>% na.omit()
+    df.plot.full <- rbind(df.plot.full, data.frame(values=values, group=rep(cluster.uniq[n], length(values)),
+                                                   var=rep(colnames(X)[m], length(values))))
+    
+    #summary
+    values.mean <- mean(values)
+    values.ths <- quantile(values, c(0.05,.5,.95), na.rm = T)
+    values.sd <- sd(values, na.rm = T)
+    df.plot <- rbind(df.plot, list(group=cluster.uniq[n], var=colnames(X)[m], 
+                                   ths5=values.ths[1], ths50=values.ths[2], ths95=values.ths[3], 
+                                   sd=values.sd, mean=values.mean))
+  }
+}
+df.plot$group <- as.character(df.plot$group)
+df.plot.full$group <- as.character(df.plot.full$group)
+df.plot.full$group <- factor(df.plot.full$group, levels=cluster.uniq)
+
+df.plot.full$group <- ifelse(df.plot.full$group=="normal", "Lean", "Obese")
+
+comparisons <- list(c("Lean", "Obese"))
+
+p <- df.plot.full %>%
+  ggplot(aes(x=group, y=values, fill=group)) +
+  geom_boxplot() + xlab("") + ylab("") +
+  geom_hline(yintercept=0, linetype=2) + 
+  stat_compare_means(aes(label = paste0("p = ", ..p.format..)), comparisons=comparisons, method="t.test", size=3) +
+  scale_y_continuous(expand = expansion(mult = .1)) +
+  facet_wrap(~var, scales="free") + theme_classic2() +
+  theme(text=element_text(size=10, family="Arial")) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+p
+
+# Boxplot for metabolic diseases (UKB) ####
+tier1.prot.ukb <- c("LDLR", "LEP", "CPM", "IL1RN", "FGF21", "TMPRSS15", "FAM3C", "ANGPTL4", 
+                    "FAM3B", "SERPINA9", "CTSF", "DCBLD2", "GCG")
+
+df.group <- data.frame(Diabetes = ifelse(ukb.data$metabolic_disease=="T2D", 1, 0))
+df.group$Gout <- ifelse(ukb.data$metabolic_disease=="Gout", 1, 0)
+df.group$Hyperthyroidism <- ifelse(ukb.data$metabolic_disease=="Hyperthyroidism", 1, 0)
+df.group$Obesity <- ifelse(ukb.data$metabolic_disease=="Obese", 1, 0)
+df.group$Healthy <- ifelse(ukb.data$metabolic_disease=="relative_health", 1, 0)
+
+
+df.plot <- data.frame()
+df.plot.full <- data.frame()
+for (n in 1:ncol(df.group)){
+  for (prot in tier1.prot.ukb){
+    
+    values <- X[df.group[,n]==1, prot] %>% na.omit()
+    df.plot.full <- rbind(df.plot.full, data.frame(values=values, 
+                                                   group=colnames(df.group)[n],
+                                                   var=prot))
+    
+    #summary
+    values.mean <- mean(values)
+    values.ths <- quantile(values, c(0.25,.5,.75), na.rm = T)
+    values.sd <- sd(values, na.rm = T)
+    df.plot <- rbind(df.plot, data.frame(group=colnames(df.group)[n], prot, 
+                                   ths25=values.ths[1], ths50=values.ths[2], ths75=values.ths[3], 
+                                   sd=values.sd, mean=values.mean))
+  }
+}
+df.plot.full$group <- factor(df.plot.full$group, levels=c("Healthy", "Diabetes", "Hyperthyroidism", "Gout", "Obesity"))
+df.plot.full$var <- factor(df.plot.full$var, levels=c("ANGPTL4", "LEP", "TMPRSS15", "FAM3B", 
+                      "FAM3C", "LDLR", "FGF21", "DCBLD2",  
+                      "IL1RN", "CTSF", "SERPINA9", "CPM", 
+                      "GCG"))
+
+comparisons <- list(c("Healthy", "Diabetes"),
+                    c("Healthy", "Obesity"),
+                    c("Healthy", "Hyperthyroidism"),
+                    c("Healthy", "Gout"))
+
+df.plot.full %>%
+  ggplot(aes(x=group, y=values, fill=group)) +
+  geom_boxplot() + xlab("") + ylab("") +
+  geom_hline(yintercept=0, linetype=2) + 
+  stat_compare_means(aes(label = paste0("p = ", ..p.format..)), comparisons=comparisons, method="t.test") +
+  scale_y_continuous(expand = expansion(mult = .1)) +
+  facet_wrap(~var, scales="free") + 
+  theme_bw() +
+  theme(text=element_text(size=20, family="Arial"), legend.position="top") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+
+  
+# Spider of metabolic diseases in UKB ####
+tier1.prot.ukb <- c("LDLR", "LEP", "CPM", "IL1RN", "FGF21", "TMPRSS15", "FAM3C", "ANGPTL4", 
+                    "FAM3B", "SERPINA9", "CTSF", "DCBLD2", "GCG")
+stopifnot(all(tier1.prot.ukb %in% colnames(X)) )
+idx.control <- which( apply(ukb.data.all[,c("T2D", "Gout", "Hyperlipidemia", "Fatty_acid_liver")], 1, 
+                             function(x){all(is.na(x))})   )
+df.plot <- rbind( X[idx.control, tier1.prot.ukb] %>% colMeans(na.rm=T),
+  X[which(!is.na(ukb.data.all$T2D)), tier1.prot.ukb] %>% colMeans(na.rm=T),
+                  X[which(!is.na(ukb.data.all$Gout)), tier1.prot.ukb] %>% colMeans(na.rm=T),
+                  X[which(!is.na(ukb.data.all$Hyperlipidemia)), tier1.prot.ukb] %>% colMeans(na.rm=T),
+                  X[which(!is.na(ukb.data.all$Fatty_acid_liver)), tier1.prot.ukb] %>% colMeans(na.rm=T)) %>% 
+  scale() %>% as.data.frame()
+ord.prot <- df.plot %>% cor() %>% heatmap(); ord.prot <- ord.prot$rowInd
+
+df.plot <- df.plot[,ord.prot]
+
+min.prot <- min(df.plot)
+max.prot <- max(df.plot)
+
+df.plot <- cbind(data.frame(Group=c("Healthy", "T2D", "Gout", "Hyperlipidemia", "Fatty acid liver"), df.plot))
+#df.plot <- df.plot[,c("Group","LDLR", "LEP", "CPM" , "IL1RN", "FGF21", 
+                     # "TMPRSS15", "GCG", "FAM3C", "ANGPTL4", "FAM3B", "SERPINA9", "CTSF", "DCBLD2") ]
+
+
+par(mar=c(5,5,5,5))
+op <- par(family = "Arial")
+
+ggradar(df.plot, grid.min=min.prot, grid.max=max.prot, grid.mid=NA,
+        label.gridline.min=F, label.gridline.mid=F, label.gridline.max=F,
+        group.point.size=0, background.circle.colour="white",
+        plot.legend=T) + 
+  theme(text=element_text(size=20, family="Arial"))
+
+
